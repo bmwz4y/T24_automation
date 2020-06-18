@@ -1,0 +1,22 @@
+- to view past few commands
+history
+
+- location of scripts:
+/usr/Temenos/TAFJ/bin
+
+- if there's a problem with not found for executable, it may have problem with hidden carriage Returns use:
+perl -p -i -e "s/\r//g" name_of_script_file
+
+- to find length of string
+echo ${#theString}
+
+- to debug
+set-x must be in main and in every function you want to debug or only before the line you want to start from
+and if you want it from shell and to stop use (set +x)
+
+- expect script user interaction
+# interact if needed ended by typing ++
+interact ++ return
+
+- if the terminal hangs because you pressed ctrl-S
+ctrl-Q to resume

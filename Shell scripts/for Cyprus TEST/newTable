@@ -1,0 +1,30 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# author Yahya.Mubaideen@ahli.com
+# new Table script for *ux
+# -------------------------------------------------------------------------
+RedC='\033[0;31m' # red Color
+NoC='\033[0m' # no Color (default color)
+YelC='\033[1;33m' # yellow Color
+GreC='\033[0;32m' # green Color
+
+scriptsPath=/usr/Temenos/TAFJ/bin
+
+# check if user sent name of table
+if [[ -z $1 ]];then
+	echo "${RedC}No table name selected${NoC}"
+	
+else
+	# to avoid conflicts on login with username and password in the expect script
+	print -n "${YelC}Are you sure no one else is using ${RedC}newTable${YelC} at the same time? ${NoC}"; read answer
+	if [[ $answer == Y || $answer == y || $answer == YES || $answer == Yes || $answer == yes ]];then
+		# show please wait message
+		echo "${YelC}Please wait until END line${NoC}"
+		
+		# call the expect script with name which automates t24 drill
+		$scriptsPath/newTable.exp $1
+	fi
+fi
+# finishing line
+echo "${GreC}----------------END----------------${NoC}"

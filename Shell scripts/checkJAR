@@ -1,0 +1,197 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# author Yahya.Mubaideen@ahli.com
+# check jars script for *ux
+# -------------------------------------------------------------------------
+RedC='\033[0;31m' # red Color
+NoC='\033[0m' # no Color (default color)
+YelC='\033[1;33m' # yellow Color
+GreC='\033[0;32m' # green Color
+PurC='\033[1;35m' # purple Color
+CyaC='\033[0;36m' # cyan Color
+
+libPath=/usr/Temenos/T24/lib/LocalDev
+codeRepoPath=/usr/Temenos/UD/JAB.BP
+tShowResult1=FOUND
+tShowResult2=MISSING
+timeSlot=
+lineColor=1 #initially 1
+nameFlag=0 #initially false
+allFlag=0 #initially false
+progressTotal=0 #initially zero
+progress=0 #initially zero
+
+# get system date in a specific format to make it the name of the log file
+logFile=`date +"%Y%m%d%H%M%S"`
+logFile=$libPath/checkJAR_$logFile.txt
+
+# create log file if not already
+if [[ ! -f $logFile ]]
+then
+	touch $logFile
+else
+	# log file already exists so print error and exit
+	echo "${RedC}Log file already exist, you can't run multiple reports in the same second, or there's an error in system time or files"
+	# finishing line
+	echo "${GreC}----------------END----------------${NoC}"
+	exit
+fi
+
+# change to the jars directory
+cd $libPath
+
+# day, week, month, specific jar or all jars options using argument
+if [[ $1 == D || $1 == d ]];then
+	timeSlot=1
+elif [[ $1 == W || $1 == w ]];then
+	timeSlot=7
+elif [[ $1 == M || $1 == m ]];then
+	timeSlot=30
+elif [[ -f "$libPath/$1" ]];then
+	# set name flag
+	nameFlag=1
+elif [[ $1 == A || $1 == a ]];then
+	# set all flag
+	allFlag=1
+else
+	# info message for how to use this tool Day/Week/Month/jarName
+	echo "${RedC}You have to specify ${YelC}D ${RedC}for a day or ${YelC}W ${RedC}for a week or ${YelC}M ${RedC}for a month or ${YelC}name_of_file.jar ${RedC}for a specific jar or ${YelC}A ${RedC}for all jars${NoC}"
+	# finishing line
+	echo "${GreC}----------------END----------------${NoC}"
+	exit
+fi
+
+# which jar files to do the report for
+if [[ $nameFlag == 1 ]];then
+	# Jar file under libPath with the given name 
+	jarFiles=`find $libPath -name $1`
+	echo "${GreC}tShow vs. code repository for ${YelC}$1"
+elif [[ $allFlag == 1 ]];then
+	# all Jar files under libPath
+	jarFiles=`find $libPath -name '*.jar'`
+	echo "${GreC}tShow vs. code repository for ${YelC}all jar files"
+else
+	# all Jar files under libPath skipping anything older than timeSlot days
+	jarFiles=`find $libPath -mtime -$timeSlot -name '*.jar'`
+	echo "${GreC}tShow vs. code repository for each of the jars done in the last ${YelC}$timeSlot${GreC} day(s)"
+fi
+
+# show tool heading
+echo "${GreC}\c" # \c means suppress new line
+echo "Report output example:" | tee -a $logFile # and redirect append to log file
+echo "${YelC}\c"
+echo "Progress: #/# - Jar name with full path" | tee -a $logFile
+echo "Jar name : Routine name : tShow BASIC source location : tShow date : repository availability : repository last modification date" | tee -a $logFile
+echo "${NoC}\c"
+
+# iterate over them to know total for progress
+for jarFile in $jarFiles
+do
+	let progressTotal+=1
+done
+
+# iterate over them and extract details requested
+for jarFile in $jarFiles
+do
+	# increment progress
+	let progress+=1
+	
+	# make sure it's a file and take action on each
+	if [[ -f "$jarFile" ]];then
+		# show progress and print Jar name with path
+		echo "${PurC}\c"
+		echo "Progress: $progress/$progressTotal - $jarFile" | tee -a $logFile
+		echo "${NoC}\c"
+		
+		# see the content of the current Jar
+		jarClassesInfo=`jar tvf "$jarFile"`
+		# iterate over each line and extract routine name
+		for classInfo in $jarClassesInfo
+		do
+			# skip other info knowing that this one starts with com/temenos/t24/
+			if [[ $classInfo == com/temenos/t24/* ]];then
+				# change to routine name by removing leading "com/temenos/t24/" and removing trailing "_cl.class" and substituting every "_" with "."
+				className=${classInfo##(com/temenos/t24/)}
+				className=${className%%(_cl.class)}
+				routineName=$( echo ${className} | awk ' gsub("_","\.") ' )
+				# color of this line
+				case $lineColor in
+				   1) echo "${NoC}\c";;
+				   2) echo "${CyaC}\c";;
+				esac
+				
+				# don't run tShow with empty variable because it hangs so instead send /
+				if [[ -z $routineName ]];then routineName=/;fi
+				
+				# show report for this class
+				echo "${jarFile##(*/)}\c" | tee -a $logFile # jar name without path
+				echo " : $routineName \c" | tee -a $logFile
+				# run tShow and save result
+				tempLog=`tShow "$routineName"`
+				# according to which tShowResult
+				if [[ $tempLog == *"$tShowResult1"* ]];then
+					# found so do clean up to show only what's needed
+					# print BASIC source path
+					sourceLocation=${tempLog##(*BASIC source)}
+					sourceLocation=${sourceLocation%%(BASIC*)}
+					# using print -n to skip spaces
+					print -n ${sourceLocation} | tee -a $logFile
+					echo " \c" | tee -a $logFile
+					# print compile date
+					compileDateTime=${tempLog##(*the)}
+					compileDateTime=${compileDateTime%%(on*)}
+					print -n ${compileDateTime} | tee -a $logFile
+					echo " : \c" | tee -a $logFile
+				elif [[ $tempLog == *"$tShowResult2"* ]];then
+					# not found so print missing in red and a default compile date
+					echo ": \c" | tee -a $logFile
+					echo "${RedC}\c"
+					echo "$tShowResult2\c" | tee -a $logFile
+					echo "${NoC}\c"
+					echo " : DD Mon YYYY HH:MM:SS : \c" | tee -a $logFile
+				fi
+				# repoFile is the actual routine source file that should be inside the repository for future access
+				repoFile="$codeRepoPath/$routineName"
+				# sometimes the source file ends with .b so if no file without .b then add .b
+				if [[ ! -f "$repoFile" ]];then
+					repoFile="$repoFile.b"
+				fi
+				
+				# repository availability of this routine and last modification date
+				if [[ -f "$repoFile" ]];then
+					echo "${GreC}\c"
+					echo "Available \c" | tee -a $logFile
+					# switch colors between default and cyan to improve readability of lines
+					case $lineColor in
+					   1) echo "${NoC}\c"
+						lineColor=2;;
+					   2) echo "${CyaC}\c"
+						lineColor=1;;
+					esac
+					# get file status from system to know last modification date
+					mTime=`istat "$repoFile"`
+					mTime=${mTime##(*modified:)}
+					mTime=${mTime%%(Last*)}
+					mTime=${mTime#(	)} # trim leading tab
+					echo ": $mTime\c" | tee -a $logFile
+				else
+					echo "${RedC}\c"
+					echo "Not available \c" | tee -a $logFile
+					# switch colors between default and cyan to improve readability of lines
+					case $lineColor in
+					   1) echo "${NoC}\c"
+						lineColor=2;;
+					   2) echo "${CyaC}\c"
+						lineColor=1;;
+					esac
+					echo ": Day Mon DD HH:MM:SS ZZZZ YYYY" | tee -a $logFile
+				fi
+			fi
+		done
+	fi
+done
+# finishing line
+echo "${GreC}\c"
+echo "----------------END----------------" | tee -a $logFile
+echo "${NoC}\c"

@@ -1,0 +1,92 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# TAFJ Bootstrap Script for *ux
+# author Temenos
+# altered by Yahya.Mubaideen@ahli.com
+# reason for edit: show warning for routines that have uncommented DEBUG word
+# -------------------------------------------------------------------------
+RedC='\033[0;31m' # red Color
+NoC='\033[0m' # no Color (default color)
+
+# check arguments sent and know files then read line by line searching for DEBUG word
+if [[ ! -z $1 ]];then
+	thisDirectory=`pwd`
+	for arg in $*;do
+		# set file
+		currentFile=$arg
+		# and reset flag
+		printWarning=""
+		# each argument is the name of a file, make sure it has path, else append path
+		if [[ ! -f $currentFile ]];then
+			currentFile=$thisDirectory/$currentFile
+		fi
+		# now it should be a file that contains routine text
+		if [[ -f $currentFile ]];then
+			# while loop to read file line by line
+			while IFS= read -r line
+			do
+				# if line contains DEBUG process it
+				if [[ $line == *DEBUG* ]];then
+					# take everything before the word DEBUG in a new variable
+					lineText=${line%%(DEBUG*)}
+					# now if no comment character (*) in it then update flag and skip file
+					if [[ $line != *'*'* ]];then
+						printWarning=Y
+						# no need to read more lines in this file
+						break
+					fi
+				fi
+			done < $currentFile
+		fi
+		if [[ $printWarning == Y ]];then
+			echo "${RedC}-----------------------------------"
+			echo "extra warning: uncommented DEBUG found inside $currentFile"
+			echo "-----------------------------------${NoC}"
+		fi
+	done
+fi
+
+#
+# Make sure TAFJ_HOME is a valid readable directory.
+# if not the case, use the current directory.
+#
+if [ ! -r "$TAFJ_HOME" ]; then
+  export TAFJ_HOME=`pwd`/..
+fi
+
+export DIRNAME=$TAFJ_HOME/bin
+
+# set to Y if low Memory is enough
+unset TAFJ_LOW_MEM
+
+# Read an optional configuration file.
+if [ "x$RUN_CONF" = "x" ]; then
+   export RUN_CONF=$DIRNAME/tafj_conf.sh
+fi
+
+if [ -f "$RUN_CONF" ]; then
+   . "$RUN_CONF" $*
+else
+   echo "Missing config script "$RUN_CONF
+fi
+
+
+# Set here your class to launch and the classpath
+export TAFJ_CLASSPATH=$RUN_CLASSPATH
+export TAFJ_CLASSPATH=$TAFJ_CLASSPATH:"$TAFJ_HOME"/lib/TAFJCompiler.jar
+export TAFJ_CLASSPATH=$TAFJ_CLASSPATH:"$JAVA_HOME"/lib/tools.jar
+export TAFJ_CLASS=com.temenos.tafj.compiler.tcompile
+unset TAFJ_NO_ARGU
+
+# Execute TAFJ.
+if [ "x$RUN_RUN" = "x" ]; then
+   export RUN_RUN=$DIRNAME/tafj_run.sh
+fi
+if [ -f "$RUN_RUN" ]; then
+   . "$RUN_RUN" $*
+else
+   echo "Missing runner script "$RUN_RUN
+fi
+
+

@@ -1,0 +1,150 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# author Yahya.Mubaideen@ahli.com
+# do jar script for *ux
+# -------------------------------------------------------------------------
+RedC='\033[0;31m' # red Color
+NoC='\033[0m' # no Color (default color)
+YelC='\033[1;33m' # yellow Color
+GreC='\033[0;32m' # green Color
+
+codeType1="SUBROUTINE"
+codeType2="PROGRAM"
+parentPath=/usr/Temenos/Server1/T24/source/JABLDEV/JARS
+tafjClassesPath=/usr/Temenos/Server1/TAFJ/data/tafj/classes/com/temenos/t24
+libPath=/usr/Temenos/Server1/T24/lib/LocalDev
+devPath=/usr/Temenos/Server1/T24/source/JABLDEV
+className=
+
+# a function to know class name from file provided
+getClassName () {
+	# use argument sent to this function
+	file=$1
+
+	#reset the name of the routine
+	routineName=""
+
+	# extract name of routine for this one
+	# while loop to read file line by line
+	while IFS= read -r line
+	do
+		# if line contains codeType 1 or codeType 2 do cropping
+		if [[ $line == *"$codeType1"* || $line == *"$codeType2"* ]];then
+		
+			# processing the name
+			# make sure no windows styled carriage returns here
+			routineName=$(echo ${line} | tr -d '\r')
+			# trim spaces from string beginning and end to avoid errors
+			routineName=$(echo ${routineName} | sed -e 's/^ *//g;s/ *$//g')
+			# remove the codeType word accordingly
+			if [[ $routineName == *"$codeType1"* ]];then
+				routineName=${routineName##+($codeType1)}
+			elif [[ $routineName == *"$codeType2"* ]];then
+				routineName=${routineName##+($codeType2)}
+			fi
+			# trim spaces after codeType word which is now at beginning
+			routineName=${routineName##+( )}
+			# trim anything after the name by using any of the name enders in jBasic language if it exists
+			routineName=${routineName%%\(*} # open bracket of argument list
+			routineName=${routineName%%^ *} # empty space
+			routineName=${routineName%%\;*} # inline end character
+	
+			# substitute every . with _ then add '_cl' to have the class name
+			className=$( echo ${routineName} | awk ' gsub("\\\.","_") ' )_cl
+			
+			# no need to read more lines in this file
+			break
+		fi
+	done < $file
+}
+
+# the command argument sent with it is the directory name which contains all files to:
+#  1-compile 2-copy classes to directory 3-create jar 4-copy jar to lib directory
+
+# routinesFile is a text file named "routines" inside this directory that contains a list of files inside devPath to be compiled, it should be provided by the user
+routinesFile=$parentPath/$1/routines
+
+# check if user sent name of directory
+if [[ -z $1 ]];then
+	echo "${RedC}No folder selected${NoC}"
+	
+# make sure this directory is inside parentPath, it should be created by the user
+elif [[ ! -d "$parentPath/$1" ]];then
+	echo "${RedC}No such folder inside \"$parentPath\"${NoC}"
+	
+# make sure there is a file named routines inside this directory
+elif [[ ! -f "$routinesFile" ]];then
+	echo "${RedC}No \"routines\" file inside \"$1\"${NoC}"
+	
+else
+	# show please wait message
+	echo "${YelC}Please wait until END line${NoC}"
+	
+	# init variables
+	totalProcessedFiles=0
+	log="${YelC}Statuses:\n\n${NoC}" # initial log string
+	
+	# make a directory with sub directories needed to make t24 jar with the same name as this directory inside it
+	myClassesPath=$parentPath/$1/$1/com/temenos/t24
+	mkdir -p $myClassesPath
+	
+	# while loop to read file line by line to know source files names and last line if no LF at end
+	while IFS= read -r line || [[ -n "$line" ]];
+	do
+		# progress line
+		echo "${YelC}------------PROCESSING-------------${NoC}"
+		echo "${YelC}$line${NoC}"
+		
+		# process files one by one
+		# make sure no windows styled carriage returns here
+		line=$(echo ${line} | tr -d '\r')
+		# trim spaces from string beginning and end to avoid errors
+		line=$(echo ${line} | sed -e 's/^ *//g;s/ *$//g')
+		
+		# define where the routine is
+		sourceFile=$devPath/$line
+
+		# make sure to only process files that exist
+		if [[ -f $sourceFile ]];then
+			# compile the file listed and append output to temporary log and increment total to show
+			tempLog=`tCompile $sourceFile`
+			totalProcessedFiles=`expr $totalProcessedFiles + 1`
+			
+			# progress line
+			echo "${YelC}------------PROCESSING-------------${NoC}"
+
+			# know the class name using function defined above, the double quotation marks to make sure any spaces in the file name are sent in same argument
+			getClassName "$sourceFile"
+			
+			# progress line
+			echo "${YelC}------------PROCESSING-------------${NoC}"
+
+			# clean the temporary log to only show what we want and append it to log
+			tempLog=${tempLog##(*Status)}
+			tempLog=${tempLog#(*--------------------------------------------------------------------------------)}
+			tempLog=${tempLog%%(--------------------------------------------------------------------------------*)}
+			tempLog=${tempLog}\\\n # append new line
+			log=${log}$tempLog
+
+			# copy the class file from TAFJ classes directory to this classes directory
+			cp $tafjClassesPath/$className.class $myClassesPath
+		fi
+	done < $routinesFile
+	
+	# create jar file from these classes
+	tPackager -jar $1.jar $parentPath/$1/$1/
+
+	# make t24 jar directory and move this created jar file to it and send a copy over to libraries directory
+	myJarPath=$parentPath/$1/JAR
+	mkdir -p $myJarPath
+	mv $1.jar $myJarPath
+	cp $myJarPath/$1.jar $libPath
+
+	# show log
+	echo "${GreC}-----------------------------------${NoC}"
+	echo $log
+	echo "${YelC}Files processed = $totalProcessedFiles${NoC}"
+fi
+# finishing line
+echo "${GreC}----------------END----------------${NoC}"

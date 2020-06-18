@@ -1,0 +1,189 @@
+﻿********------------------terminal commands------------------********
+tRun EBS.TERMINAL.SELECT EBS-JBASE
+-----------------------------------
+tRun START.TSM -DEBUG
+-----------------------------------
+DBTools -u upgrade -p Temenos1!
+JQL USAGE
+
+JED FBNK.TABLE.NAME RECORD.ID
+ or F.TABLE.NAME RECORD.ID
+
+x TO close
+-----------------------------------
+
+GETDBNAME FBNK.JABL.INTERNAL.BLACK.LIST
+-----------------------------------
+to see environment services in shell:
+tRun EX
+YM3696A
+Jan/123456
+TS,
+L L
+SERVICE.CONTROL EQ START
+
+then ctrl+v enter
+
+to force environment to be up again:
+su wasadmin
+kill -9 -1
+
+if it does not work, do kill again in normal login too
+and
+then from DBTools
+CLEAR-FILE F.TSA.STATUS
+-----------------------------------
+EQ NE LT GT LE GE RG NR LK UL
+				RanGe | Not in Range | LiKe | UnLike
+********------------------t24 system------------------********
+STANDARD.SELECTION record? What is there in SYS.DISPLAY.FMT for that field
+
+And ENQUIRY - does it have FIXED.SORT set to anything or selection criteria
+-----------------------------------
+DTSCAC , HUSCAC
+
+ENQ COB.PROGRESS
+-----------------------------------
+main applications used for AA products:
+AA.PROPERTY.CLASS
+AA.PROPERTY
+AA.PERIODIC.ATTRIBUTE.CLASS
+AA.PERIODIC.ATTRIBUTE
+AA.ACTIVITY.CLASS
+AA.ACTIVITY
+AA.PRD.DES.<PROPERTY.CLASS>			;* example: AA.PRD.DES.CHARGE
+AA.SOURCE.CALC.TYPE
+AA.PROPERTY.CLASS.ACTION
+********------------------basic codes------------------********
+    IF LEN(SUBSCRIBER.ID) GT 4 THEN
+        TEC.API.CHECK = 1
+    END
+-----------------------------------
+	FN.SAVEDLISTS = '&SAVEDLISTS&'
+	F.SAVEDLISTS = ''
+	CALL OPF(FN.SAVEDLISTS,F.SAVEDLISTS)
+	
+	OFS.REQ ="AA.ARRANGEMENT.ACTIVITY,CORR/I/PROCESS,//,,ARRANGEMENT=":Y.ARR.ID:",ACTIVITY=SAFE.DEPOSIT.BOX,FIELD.VALUE:1:3=":Y.COLL.AMT
+	CALL OFS.CALL.BULK.MANAGER(OFS.SOURCE.ID,OFS.REQ,OFS.RESP,TXN.COMMIT)
+	IF TXN.COMMIT NE 1 THEN
+		FAILED.DETAILS <-1>= OFS.REQ:"~":OFS.RESP
+	END
+		
+	IF FAILED.DETAILS THEN
+		WRITE.ID = "JABL.AA.SDB.UPDATE.BOX.AVL.ERROR-":TODAY
+		WRITE FAILED.DETAILS ON F.SAVEDLISTS,WRITE.ID
+	END
+-----------------------------------
+	CHANGE VM TO FM IN CUSTOMER.IDS
+-----------------------------------
+	CUST.COUNT = DCOUNT(CUSTOMER.IDS,FM)
+-----------------------------------
+	LOCATE Y.CUST.TARGET IN STAFF.TARGET<1> SETTING Y.POS THEN
+		Y.CHARGE.LOOKUP.ID = "JABL.SDB.RENT*STAFF"
+	END
+-----------------------------------
+	IF LOAN.AGE.STATUS MATCHES 'SUB':VM:'DOF':VM:'LOS' THEN
+		LOAN.SUSP.FLAG = 1
+	END
+-----------------------------------
+	AF = AA.SET.LOCAL.REF
+	AV = JABL.RM.PAY.AMT.POS
+	ETEXT = 'Invalid Amount'
+	CALL STORE.END.ERROR
+-----------------------------------
+	CURR.NO = ''
+	TEXT = FAIL.MSG:VM:"TERM"
+	CALL STORE.OVERRIDE(CURR.NO)
+-----------------------------------
+    APP.NAME = 'FUNDS.TRANSFER'
+    VERSION.NAME = APP.NAME:",JABL.DEP"
+    OFSFUNCT = PROCESS.FUNCTION
+
+    CALL OFS.BUILD.RECORD(APP.NAME,OFSFUNCT,"PROCESS",VERSION.NAME,"","0","",RECORD,OFSRECORD)
+    CALL ofs.addLocalRequest(OFSRECORD,"INSERT",FT.PROCESS.ERROR)
+-----------------------------------
+    Y.DIRECTORY = "/usr/Temenos"
+    Y.LOG.FILE.NAME = "Wrong_Internal_Blacklist_Entries.txt"
+	Y.TEXT.TO.APPEND = "SOMETHING"
+
+    IF Y.DIRECTORY THEN
+        Y.LOG.FILE = ""
+		OPENSEQ Y.DIRECTORY,Y.LOG.FILE.NAME TO Y.LOG.FILE THEN
+			GOSUB WRITE.APPEND
+		END ELSE
+			CREATE Y.LOG.FILE THEN
+				GOSUB WRITE.APPEND
+			END ELSE
+				STOP "Can't create ":Y.LOG.FILE.NAME
+			END
+		END
+		CLOSESEQ Y.LOG.FILE
+	END ELSE
+		STOP "Can't open directory ":Y.DIRECTORY
+	END
+    RETURN
+*-----------------------------------------------------------------------------
+WRITE.APPEND:
+	WRITESEQ Y.TEXT.TO.APPEND APPEND TO Y.LOG.FILE ELSE
+		STOP "Unable to write on ":Y.LOG.FILE.NAME
+	END
+	RETURN
+-----------------------------------
+Use the below code for checking working day or holiday.
+
+	Y.DATE = '20140420'
+
+	CALL AWD('',Y.DATE,Y.VAL)
+
+	Y.VAL = 'H' or Y.VAL = ‘W’ [ The output will be either H(Holiday) or W(Working day) based on the date ]
+-----------------------------------
+	Y.SELECT.CMD = 'SELECT ':FN.EB.FILE.UPLOAD:' WITH UPLOAD.TYPE EQ "':Y.EB.FILE.UPLOAD.TYPE.ID:'" AND SERVICE.STATUS EQ ""'
+	Y.SELECT.LIST = ""
+	Y.SELECT.COUNT = ""
+	CALL EB.READLIST(Y.SELECT.CMD,Y.SELECT.LIST,'',Y.SELECT.COUNT,'')
+	-----------------------------------
+	* you can use something like this instead of OR but only for integers probably
+	CARD.STATUS EQ '95' '96' '97' '107'
+-----------------------------------
+	Y.LINE.RECORD.ID = FIELD(Y.LINE, Y.SEPARATOR,1)
+-----------------------------------
+for substring:
+	CHANGE expression1 TO expression2 IN variable
+
+for character:
+	CONVERT expression1 TO expression2 IN expression3
+-----------------------------------
+	* get the actual account number using AA.ARRANGEMENT
+	R.ARRANGEMENT = ""
+	Y.ARRANGEMENT.ERR = ""
+	CALL F.READ(FN.AA.ARRANGEMENT,Y.ARRANGEMENT.ID,R.ARRANGEMENT,F.AA.ARRANGEMENT,Y.ARRANGEMENT.ERR)
+	Y.LINKED.ACCOUNTS<1> = R.ARRANGEMENT<AA.ARR.LINKED.APPL.ID>
+-----------------------------------
+	IF V$FUNCTION EQ 'I' THEN
+		* it's input
+	END
+-----------------------------------
+	Y.UPLD.LOCAL.POS.ALL = ""
+    Y.UPLD.LOCAL.FIELD = "BLK.PROCESS.ERR":VM:"CHECKSUM"
+    CALL MULTI.GET.LOC.REF("EB.FILE.UPLOAD",Y.UPLD.LOCAL.FIELD,Y.UPLD.LOCAL.POS.ALL)
+	Y.UPLD.BLK.PROCESS.ERR.POS = Y.UPLD.LOCAL.POS.ALL<1,1>
+	Y.UPLD.CHECKSUM.POS = Y.UPLD.LOCAL.POS.ALL<1,2>
+	
+	R.NEW(EB.UF.LOCAL.REF)<1, Y.UPLD.BLK.PROCESS.ERR.POS> = ""
+-----------------------------------
+	Y.NEXT.DATE = TODAY
+	YDAYS.ORIG = "+1C"
+	CALL CDT("",Y.NEXT.DATE,YDAYS.ORIG)
+-----------------------------------
+	LOCATE 'T24.BFD.ACCT' IN ENQ.SELECTION<2,1> SETTING PAY.AC.POS THEN
+		BEN.ACC.NO = ENQ.SELECTION<4,PAY.AC.POS>
+	END
+-----------------------------------
+	LOOP 
+	REMOVE Y.STMT.ENTRY FROM Y.STMT.LIST SETTING Y.STMT.INDEX
+	WHILE Y.STMT.ENTRY:Y.STMT.INDEX
+	REPEAT
+-----------------------------------
+	FOR Y.I = 1 TO Y.COUNT
+		*DO THIS
+	NEXT Y.I

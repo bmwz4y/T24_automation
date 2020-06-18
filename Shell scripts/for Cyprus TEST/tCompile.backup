@@ -1,0 +1,48 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# TAFJ Bootstrap Script for *ux
+# -------------------------------------------------------------------------
+
+#
+# Make sure TAFJ_HOME is a valid readable directory.
+# if not the case, use the current directory.
+#
+if [ ! -r "$TAFJ_HOME" ]; then
+  export TAFJ_HOME=`pwd`/..
+fi
+
+export DIRNAME=$TAFJ_HOME/bin
+
+# set to Y if low Memory is enough
+unset TAFJ_LOW_MEM
+
+# Read an optional configuration file.
+if [ "x$RUN_CONF" = "x" ]; then
+   export RUN_CONF=$DIRNAME/tafj_conf.sh
+fi
+
+if [ -f "$RUN_CONF" ]; then
+   . "$RUN_CONF" $*
+else
+   echo "Missing config script "$RUN_CONF
+fi
+
+
+# Set here your class to launch and the classpath
+export TAFJ_CLASSPATH=$RUN_CLASSPATH
+export TAFJ_CLASSPATH=$TAFJ_CLASSPATH:"$TAFJ_HOME"/lib/TAFJCompiler.jar
+export TAFJ_CLASSPATH=$TAFJ_CLASSPATH:"$JAVA_HOME"/lib/tools.jar
+export TAFJ_CLASS=com.temenos.tafj.compiler.tcompile
+unset TAFJ_NO_ARGU
+
+# Execute TAFJ.
+if [ "x$RUN_RUN" = "x" ]; then
+   export RUN_RUN=$DIRNAME/tafj_run.sh
+fi
+if [ -f "$RUN_RUN" ]; then
+   . "$RUN_RUN" $*
+else
+   echo "Missing runner script "$RUN_RUN
+fi
+

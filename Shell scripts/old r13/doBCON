@@ -1,0 +1,62 @@
+#!/bin/ksh
+
+# -------------------------------------------------------------------------
+# author Yahya.Mubaideen@ahli.com
+# do BCON tar script for *ux
+# -------------------------------------------------------------------------
+RedC='\033[0;31m' # red Color
+NoC='\033[0m' # no Color (default color)
+YelC='\033[1;33m' # yellow Color
+GreC='\033[0;32m' # green Color
+
+savedListsPath="/usr/Temenos/Server1/T24/data/UD/&SAVEDLISTS&"
+savePath=/usr/Temenos/Server1/T24/data/UD/F.BCON.DATA/SAVE
+parentPath=/usr/Temenos/Server1/T24/source/JABLDEV/BCONS
+scriptsPath=/usr/Temenos/Server1/TAFJ/bin
+bconPrefix="JOAB001-"
+
+# the command argument sent with it is the directory name which contains all files to:
+#  1-move to savedLists 2-do DL.DEFINE 3-do BCON record 4-create tar
+
+# componentsFile is a file named the same as the directory inside that contains a list of things to copy over from this environment, it should be provided by the user
+componentsFile=$parentPath/$1/$1
+
+# check if user sent name of directory
+if [[ -z $1 ]];then
+	echo "${RedC}No folder selected${NoC}"
+	
+# make sure this directory is inside parentPath, it should be created by the user
+elif [[ ! -d "$parentPath/$1" ]];then
+	echo "${RedC}No such folder inside \"$parentPath\"${NoC}"
+	
+# make sure there is a file named the same inside this directory
+elif [[ ! -f "$componentsFile" ]];then
+	echo "${RedC}No \"$1\" file inside \"$parentPath/$1\"${NoC}"
+	
+else
+	# to avoid conflicts on login with username and password in the expect script
+	print -n "${YelC}Are you sure no one else is using ${RedC}doBCON${YelC} at the same time? ${NoC}"; read answer
+	if [[ $answer == Y || $answer == y || $answer == YES || $answer == Yes || $answer == yes ]];then
+		# show please wait message
+		echo "${YelC}Please wait until END line${NoC}"
+		
+		# copy over the savedLists
+		cp $componentsFile $savedListsPath
+		
+		# call the expect script with prefix and name which automates t24 drill
+		$scriptsPath/doBCON.exp $bconPrefix $1
+		
+		# progress line
+		echo "${YelC}------------PROCESSING-------------${NoC}"
+		echo "${YelC}Making tar file${NoC}"
+		
+		# go to save path and tar it
+		cd $savePath
+		tar -cvf $bconPrefix$1.tar $bconPrefix$1
+		
+		# copy tar over to this directory
+		cp $bconPrefix$1.tar $parentPath/$1
+	fi
+fi
+# finishing line
+echo "${GreC}----------------END----------------${NoC}"
